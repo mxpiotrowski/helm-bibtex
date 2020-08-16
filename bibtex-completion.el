@@ -1203,7 +1203,7 @@ The format depends on
              'bibtex-completion-apa-get-value entry))
            ("book"
             (s-format
-             "${author} (${year}). ${title}. ${address}: ${publisher}."
+             "${author-or-editor} (${year}). ${title}. ${address}: ${publisher}."
              'bibtex-completion-apa-get-value entry))
            ("phdthesis"
             (s-format
@@ -1270,8 +1270,8 @@ Return DEFAULT if FIELD is not present in ENTRY."
      (let ((value (bibtex-completion-get-value "author" entry)))
        (if value
            (bibtex-completion-apa-format-authors value)
-         (bibtex-completion-apa-format-editors
-          (bibtex-completion-get-value "editor" entry)))))
+         (concat (bibtex-completion-apa-format-editors
+          (bibtex-completion-get-value "editor" entry)) " (Eds.)") )))
     ("author-or-editor-abbrev"
      (let* ((value (bibtex-completion-get-value "author" entry)))
        (if value
