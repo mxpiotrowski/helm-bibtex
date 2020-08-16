@@ -1201,7 +1201,7 @@ The format depends on
             (s-format
              "${author} (${year}). ${title}. In ${editor}, ${booktitle} (pp. ${pages}). ${address}: ${publisher}."
              'bibtex-completion-apa-get-value entry))
-           ("book"
+           ((or "book" "collection")
             (s-format
              "${author-or-editor} (${year}). ${title}. ${address}: ${publisher}."
              'bibtex-completion-apa-get-value entry))
