@@ -316,6 +316,102 @@ will look up the PDF in the directories listed in
   :group 'bibtex-completion
   :type 'string)
 
+(defcustom bibtex-completion-tex-unicode-alist
+  '(("\\&" . "&")
+    ("\\%" . "%")
+    ("\\ldots" . "…")
+    ("\\textsuperscript{st}" . "st")
+    ("\\textsuperscript{nd}" . "nd")
+    ("\\textsuperscript{rd}" . "rd")
+    ("\\textsuperscript{th}" . "th")
+    ("\\\"{a}" . "ä")
+    ("\\`{a}"  . "à")
+    ("\\'{a}"  . "á")
+    ("\\~{a}"  . "ã")
+    ("\\^{a}"  . "â")
+    ("\\={a}"  . "ā")
+    ("\\k{a}"  . "ą")
+    ("\\\"{e}" . "ë")
+    ("\\`{e}"  . "è")
+    ("\\'{e}"  . "é")
+    ("\\^{e}"  . "ê")
+    ("\\={e}"  . "ē")
+    ("\\k{e}"  . "ę")
+    ("\\\"{i}" . "ï")
+    ("\\`{i}"  . "ì")
+    ("\\'{i}"  . "í")
+    ("\\^{i}"  . "î")
+    ("\\\"{o}" . "ö")
+    ("\\`{o}"  . "ò")
+    ("\\'{o}"  . "ó")
+    ("\\~{o}"  . "õ")
+    ("\\^{o}"  . "ô")
+    ("\\\"{u}" . "ü")
+    ("\\`{u}"  . "ù")
+    ("\\'{u}"  . "ú")
+    ("\\^{u}"  . "û")
+    ("\\\"{A}" . "Ä")
+    ("\\`{A}"  . "À")
+    ("\\'{A}"  . "Á")
+    ("\\~{A}"  . "Ã")
+    ("\\^{A}"  . "Â")
+    ("\\={A}"  . "Ā")
+    ("\\k{A}"  . "Ą")
+    ("\\\"{E}" . "Ë")
+    ("\\`{E}"  . "È")
+    ("\\'{E}"  . "É")
+    ("\\^{E}"  . "Ê")
+    ("\\={E}"  . "Ē")
+    ("\\k{E}"  . "Ę")
+    ("\\\"{I}" . "Ï")
+    ("\\`{I}"  . "Ì")
+    ("\\'{I}"  . "Í")
+    ("\\^{I}"  . "Î")
+    ("\\\"{O}" . "Ö")
+    ("\\`{O}"  . "Ò")
+    ("\\'{O}"  . "Ó")
+    ("\\~{O}"  . "Õ")
+    ("\\^{O}"  . "Ô")
+    ("\\\"{U}" . "Ü")
+    ("\\`{U}"  . "Ù")
+    ("\\'{U}"  . "Ú")
+    ("\\^{U}"  . "Û")
+    ("\\~{n}"  . "ñ")
+    ("\\~{N}"  . "Ñ")
+    ("\\c{c}"  . "ç")
+    ("\\c{C}"  . "Ç")
+    ("{\\ss}"  . "ß")
+    ("\\ss{}"  . "ß")
+    ("{\\AE}"  . "Æ")
+    ("{\\ae}"  . "æ")
+    ("{\\AA}"  . "Å")
+    ("{\\aa}"  . "å")
+    ("{\\o}"   . "ø")
+    ("{\\O}"   . "Ø")
+    ("\\?`"    . "¿")
+    ("!`"      . "¡")
+    ("\\v{c}" . "č")
+    ("\\v{e}" . "ě")
+    ("\\v{r}" . "ř")
+    ("\\v{s}" . "š")
+    ("\\v{z}" . "ž")
+    ("\\.{z}" . "ż")
+    ("\\'{n}" . "ń")
+    ("{\\l}"  . "ł")
+    ("\\r{u}" . "ů")
+    ("\\v{C}" . "Č")
+    ("\\v{E}" . "Ě")
+    ("\\v{R}" . "Ř")
+    ("\\v{S}" . "Š")
+    ("\\v{Z}" . "Ž")
+    ("\\.{Z}" . "Ż")
+    ("\\'{N}" . "Ń")
+    ("{\\L}"  . "Ł")
+    ("\\r{U}" . "Ů"))
+  "An alist mapping TeX character macros to Unicode characters."
+  :group 'bibtex-completion
+  :type 'alist)
+
 (defcustom bibtex-completion-display-formats
   '((t . "${author:36} ${title:*} ${year:4} ${=has-pdf=:1}${=has-note=:1} ${=type=:7}"))
   "Alist of format strings for displaying entries in the results list.
@@ -1140,6 +1236,34 @@ The format depends on
 Return DEFAULT if FIELD is not present in ENTRY."
   ;; Virtual fields:
   (pcase field
+    ("address"
+     (bibtex-completion-tex-to-unicode
+      (or (bibtex-completion-get-value "address" entry)
+	  (bibtex-completion-get-value "location" entry)
+	  "s. l.")))
+    ("year" (or (bibtex-completion-get-value "year" entry)
+                (car (split-string (bibtex-completion-get-value "date" entry "") "-"))
+		"s.d."))
+    ("language"
+     (replace-regexp-in-string
+      (mapconcat 'regexp-quote '("american"
+                                 "USenglish"
+                                 "british"
+                                 "UKenglish"
+                                 "canadian"
+                                 "australian"
+                                 "newzealand") "\\|")
+      "english"
+      (or
+       (bibtex-completion-get-value "language" entry)
+       (bibtex-completion-get-value "langid" entry)
+       "english")))
+    ("journal"
+     (bibtex-completion-tex-to-unicode
+      (or (bibtex-completion-get-value "journaltitle" entry)
+	  (bibtex-completion-get-value "journal" entry)
+	  "")))
+    
     ("author-or-editor"
      ;; Avoid if-let and when-let because they're not working reliably
      ;; in all versions of Emacs that we currently support:
@@ -1168,8 +1292,12 @@ Return DEFAULT if FIELD is not present in ENTRY."
        (if value
            (pcase field
              ;; https://owl.english.purdue.edu/owl/resource/560/06/
-             ("author" (bibtex-completion-apa-format-authors value))
-             ("editor" (bibtex-completion-apa-format-editors value))
+             ("author" (bibtex-completion-apa-format-authors
+                        (bibtex-completion-tex-to-unicode value)))
+             ("editor" (bibtex-completion-apa-format-editors
+                        (bibtex-completion-tex-to-unicode value)))
+             ("publisher" (bibtex-completion-tex-to-unicode
+                           (or value "s. n.")))
              ;; When referring to books, chapters, articles, or Web pages,
              ;; capitalize only the first letter of the first word of a
              ;; title and subtitle, the first word after a colon or a dash
@@ -1181,21 +1309,30 @@ Return DEFAULT if FIELD is not present in ENTRY."
                        (replace-regexp-in-string ; remove macros
                         "\\\\[[:alpha:]]+{"
                         ""
-                        (replace-regexp-in-string ; upcase initial letter
-                         "^[[:alpha:]]"
-                         'upcase
-                         (replace-regexp-in-string ; preserve stuff in braces from being downcased
-                          "\\(^[^{]*{\\)\\|\\(}[^{]*{\\)\\|\\(}.*$\\)\\|\\(^[^{}]*$\\)"
-                          (lambda (x) (downcase (s-replace "\\" "\\\\" x)))
-                          value)))))
-             ("booktitle" value)
+                        (bibtex-completion-tex-to-unicode
+
+                         ;; normalize case if English
+                         (if (string-equal
+                              (bibtex-completion-apa-get-value
+                               "language" entry) "english")
+
+			     (replace-regexp-in-string ; upcase initial letter
+                              "^[[:alpha:]]"
+                              'upcase
+                              (replace-regexp-in-string ; preserve stuff in braces from being downcased
+                               "\\(^[^{]*{\\)\\|\\(}[^{]*{\\)\\|\\(}.*$\\)\\|\\(^[^{}]*$\\)"
+                               (lambda (x) (downcase (s-replace "\\" "\\\\" x)))
+                               value))
+                           value
+                           )))))
+             ("booktitle" (bibtex-completion-tex-to-unicode value))
              ;; Maintain the punctuation and capitalization that is used by
              ;; the journal in its title.
              ("pages" (s-join "–" (s-split "[^0-9]+" value t)))
-             ("doi" (s-concat " http://dx.doi.org/" value))
-             ("year" (or value
-                         (car (split-string (bibtex-completion-get-value "date" entry "") "-"))))
-             (_ value))
+             ("doi" (s-concat " https://doi.org/" value))
+             ;; ("year" (or value
+             ;;             (car (split-string (bibtex-completion-get-value "date" entry "") "-"))))
+             (_ (bibtex-completion-tex-to-unicode value)))
          "")))))
 
 (defun bibtex-completion-apa-format-authors (value &optional abbrev)
@@ -1273,6 +1410,16 @@ When ABBREV is non-nil, format in abbreviated APA style instead."
 (defun bibtex-completion-apa-format-editors-abbrev (value)
   "Format editor list in VALUE in abbreviated APA style."
   (bibtex-completion-apa-format-editors value t))
+
+(defun bibtex-completion-tex-to-unicode (value)
+  "Map TeX character macros (e.g., \\'{e}) to Unicode characters.
+
+The mapping is defined in `bibtex-completion-tex-unicode-alist`."
+  (replace-regexp-in-string
+   (regexp-opt (mapcar 'car bibtex-completion-tex-unicode-alist))
+   (lambda (match)
+     (cdr (assoc match bibtex-completion-tex-unicode-alist)))
+   value))
 
 (defun bibtex-completion-get-value (field entry &optional default)
   "Return the value for FIELD in ENTRY or DEFAULT if the value is not defined.
